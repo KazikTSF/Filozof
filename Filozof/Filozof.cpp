@@ -1,10 +1,10 @@
 #include <chrono>
 #include <iostream>
 #include <mutex>
+#include <ncurses.h>
 #include <random>
 #include <semaphore>
 #include <thread>
-
 int N;
 enum class State {
     THINKING,
@@ -51,7 +51,10 @@ void think(const int i) {
     const int duration = rand(3, 8);
     {
         std::lock_guard lk(OUTPUT_MTX);
-        std::cout << i << " is thinking\n";
+        attron(COLOR_PAIR(1));
+        mvprintw(i,0,std::to_string(i).append(" is thinking\n").c_str());
+        attroff(COLOR_PAIR(1));
+        refresh();
     }
     std::this_thread::sleep_for(std::chrono::seconds(duration));
 }
@@ -62,7 +65,10 @@ void takeForks(const int i) {
         STATE[i] = State::HUNGRY;
         {
             std::lock_guard lkout(OUTPUT_MTX);
-            std::cout << i << " is hungry\n";
+            attron(COLOR_PAIR(3));
+            mvprintw(i,0,std::to_string(i).append(" is hungry\n").c_str());
+            attroff(COLOR_PAIR(3));
+            refresh();
         }
         checkForks(i);
     }
@@ -73,7 +79,10 @@ void eat(const int i) {
     const int duration = rand(3, 8);
     {
         std::lock_guard lk(OUTPUT_MTX);
-        std::cout << i << " is eating\n";
+        attron(COLOR_PAIR(2));
+        mvprintw(i,0,std::to_string(i).append(" is eating\n").c_str());
+        attroff(COLOR_PAIR(2));
+        refresh();
     }
     std::this_thread::sleep_for(std::chrono::seconds(duration));
 }
@@ -106,14 +115,21 @@ int main(int argc, char *argv[]) {
         std::cout << "Usage: " << argv[1] << " <number of philosophers>\n";
         return EXIT_FAILURE;
     }
+    initscr();
+    start_color();
     N = std::stoi(argv[1]);
     std::vector<std::jthread> threads;
     BOTH_FORKS_AVAILABLE = std::vector<default_binary_semaphore>(N);
     STATE = std::vector<State>(N, State::THINKING);
+    init_pair(1, COLOR_BLUE, COLOR_BLACK);
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
+
     for (int i = 0; i < N; ++i) {
         threads.emplace_back([i] { philosopher(i); });
     }
     for (int i = 0; i < N; ++i) {
         threads[i].join();
     }
+    endwin();
 }
