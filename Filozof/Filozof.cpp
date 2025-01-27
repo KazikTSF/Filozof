@@ -48,15 +48,27 @@ void checkForks(const int i) {
 }
 
 void think(const int i) {
-    const int duration = rand(3, 8);
+    const auto text = std::to_string(i+1).append("\tis thinking [\n");
+    const auto tabLen = 7-std::to_string(i+1).size();
+    const int duration = rand(5000, 10000);
     {
         std::lock_guard lk(OUTPUT_MTX);
         attron(COLOR_PAIR(1));
-        mvprintw(i,0,std::to_string(i).append(" is thinking\n").c_str());
+        mvprintw(i,0,text.c_str());
+        mvaddch(i, tabLen + text.size()+19, ']');
         attroff(COLOR_PAIR(1));
         refresh();
     }
-    std::this_thread::sleep_for(std::chrono::seconds(duration));
+    for (int j = 0; j < 20; ++j) {
+        {
+            attron(COLOR_PAIR(1));
+            std::lock_guard lk(OUTPUT_MTX);
+            mvaddch(i, tabLen + text.size() + j-1, '#');
+            attroff(COLOR_PAIR(1));
+            refresh();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(duration/20));
+    }
 }
 
 void takeForks(const int i) {
@@ -66,7 +78,7 @@ void takeForks(const int i) {
         {
             std::lock_guard lkout(OUTPUT_MTX);
             attron(COLOR_PAIR(3));
-            mvprintw(i,0,std::to_string(i).append(" is hungry\n").c_str());
+            mvprintw(i,0,std::to_string(i+1).append("\tis hungry\n").c_str());
             attroff(COLOR_PAIR(3));
             refresh();
         }
@@ -76,15 +88,27 @@ void takeForks(const int i) {
 }
 
 void eat(const int i) {
-    const int duration = rand(3, 8);
+    const auto text = std::to_string(i+1).append("\tis eating   [\n");
+    const auto tabLen = 7-std::to_string(i+1).size();
+    const int duration = rand(5000, 10000);
     {
         std::lock_guard lk(OUTPUT_MTX);
         attron(COLOR_PAIR(2));
-        mvprintw(i,0,std::to_string(i).append(" is eating\n").c_str());
+        mvprintw(i,0,text.c_str());
+        mvaddch(i, tabLen + text.size()+19, ']');
         attroff(COLOR_PAIR(2));
         refresh();
     }
-    std::this_thread::sleep_for(std::chrono::seconds(duration));
+    for (int j = 0; j < 20; ++j) {
+        {
+            attron(COLOR_PAIR(2));
+            std::lock_guard lk(OUTPUT_MTX);
+            mvaddch(i, tabLen + text.size() + j-1, '#');
+            attroff(COLOR_PAIR(2));
+            refresh();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(duration/20));
+    }
 }
 
 void put_forks(const int i) {
@@ -95,8 +119,8 @@ void put_forks(const int i) {
     checkForks(right(i));
 }
 
-[[noreturn]] void philosopher(const int i) {
-    while(true) {
+void philosopher(const int i) {
+    for(int j = 0; j < 20; ++j) {
         think(i);
         takeForks(i);
         eat(i);
@@ -118,13 +142,17 @@ int main(int argc, char *argv[]) {
     initscr();
     start_color();
     N = std::stoi(argv[1]);
+    if (N < 5) {
+        std::cout << "Number of philosophers must be greater than 4\n";
+        return EXIT_FAILURE;
+    }
     std::vector<std::jthread> threads;
     BOTH_FORKS_AVAILABLE = std::vector<default_binary_semaphore>(N);
     STATE = std::vector<State>(N, State::THINKING);
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_GREEN, COLOR_BLACK);
     init_pair(3, COLOR_RED, COLOR_BLACK);
-
+    curs_set(0);
     for (int i = 0; i < N; ++i) {
         threads.emplace_back([i] { philosopher(i); });
     }
@@ -132,4 +160,5 @@ int main(int argc, char *argv[]) {
         threads[i].join();
     }
     endwin();
+    return 0;
 }
