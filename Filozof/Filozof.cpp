@@ -23,7 +23,6 @@ struct default_binary_semaphore
     std::binary_semaphore sem;
 
     default_binary_semaphore() : sem (std::binary_semaphore{0}) {}
-    explicit default_binary_semaphore(auto count) : sem(count) {}
 };
 
 std::vector<State> STATE;
@@ -61,8 +60,8 @@ void think(const int i) {
     }
     for (int j = 0; j < 20; ++j) {
         {
-            attron(COLOR_PAIR(1));
             std::lock_guard lk(OUTPUT_MTX);
+            attron(COLOR_PAIR(1));
             mvaddch(i, tabLen + text.size() + j-1, '#');
             attroff(COLOR_PAIR(1));
             refresh();
@@ -76,7 +75,7 @@ void takeForks(const int i) {
         std::lock_guard lk{CRITICAL_REGION_MTX};
         STATE[i] = State::HUNGRY;
         {
-            std::lock_guard lkout(OUTPUT_MTX);
+            std::lock_guard lkOut(OUTPUT_MTX);
             attron(COLOR_PAIR(3));
             mvprintw(i,0,std::to_string(i+1).append("\tis hungry\n").c_str());
             attroff(COLOR_PAIR(3));
@@ -101,8 +100,8 @@ void eat(const int i) {
     }
     for (int j = 0; j < 20; ++j) {
         {
-            attron(COLOR_PAIR(2));
             std::lock_guard lk(OUTPUT_MTX);
+            attron(COLOR_PAIR(2));
             mvaddch(i, tabLen + text.size() + j-1, '#');
             attroff(COLOR_PAIR(2));
             refresh();
@@ -120,12 +119,13 @@ void put_forks(const int i) {
 }
 
 void philosopher(const int i) {
-    for(int j = 0; j < 20; ++j) {
+    for(int j = 0; j < 5; ++j) {
         think(i);
         takeForks(i);
         eat(i);
         put_forks(i);
     }
+    mvprintw(i,0, "Finished\n");
 }
 bool isNumber(const std::string& s)
 {
